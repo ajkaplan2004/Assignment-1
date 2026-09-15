@@ -5,12 +5,19 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
 
-# --- Secrets / config (creds live here) ---
+# --- Secrets / credentials / config — NEVER commit ---
 *.key
 *.pem
+*.p12
 config.yaml
 local_config.yaml
+credentials*.json
+service_account.json
+.env
+.env.*
+!.env.example
 
 # --- OS / editor ---
 .DS_Store
@@ -18,10 +25,26 @@ Thumbs.db
 .idea/
 .vscode/
 
-# --- Data: raw dataset + generated outputs are NOT committed ---
-data/
-results/
+# --- Raw large Amazon dataset (re-downloadable) — do not commit ---
+data/Gift_Cards.jsonl.gz
 
-# --- Screenshots / temp visuals ---
-dashboard_screenshot*.png
+# --- Generated intermediate outputs (reproducible via the scripts) ---
+data/*.jsonl
+results/step2_report.txt
+results/step2_results.json
+results/step5_report.txt
+results/step5_results.json
+results/step6_report.txt
+results/step6_results.json
+
+# --- Temp screenshots ---
 shot*.png
+dashboard_screenshot_browser.png
+
+# --- Keep the small deliverable outputs & assets (un-ignore above) ---
+!data/NRC_emotion_lexicon.txt
+!data/step6_balanced_results.csv
+!results/step2_predictions.csv
+!results/step2_summary.json
+!results/step5_emotion_comparison.json
+!results/step6_metrics.json

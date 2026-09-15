@@ -1,0 +1,83 @@
+{
+  "model": "DeepSeek-V4-Flash-0731",
+  "task": "3-class sentiment + primary emotion (balanced 150-review sample)",
+  "label_rule": "rating 4-5=POSITIVE, 3=NEUTRAL, 1-2=NEGATIVE",
+  "sample_seed": 6418,
+  "n_reviews": 150,
+  "n_correct": 107,
+  "n_incorrect": 43,
+  "overall_accuracy": 0.7133,
+  "per_class_accuracy": {
+    "POSITIVE": {
+      "correct": 43,
+      "total": 50,
+      "accuracy": 0.86
+    },
+    "NEUTRAL": {
+      "correct": 18,
+      "total": 50,
+      "accuracy": 0.36
+    },
+    "NEGATIVE": {
+      "correct": 46,
+      "total": 50,
+      "accuracy": 0.92
+    }
+  },
+  "actual_counts": {
+    "POSITIVE": 50,
+    "NEUTRAL": 50,
+    "NEGATIVE": 50
+  },
+  "predicted_counts": {
+    "POSITIVE": 52,
+    "NEUTRAL": 27,
+    "NEGATIVE": 71
+  },
+  "confusion_matrix": {
+    "POSITIVE-POSITIVE": 43,
+    "POSITIVE-NEUTRAL": 6,
+    "POSITIVE-NEGATIVE": 1,
+    "NEUTRAL-POSITIVE": 8,
+    "NEUTRAL-NEUTRAL": 18,
+    "NEUTRAL-NEGATIVE": 24,
+    "NEGATIVE-POSITIVE": 1,
+    "NEGATIVE-NEUTRAL": 3,
+    "NEGATIVE-NEGATIVE": 46
+  },
+  "neutral_deep_dive": {
+    "actual_neutral_total": 50,
+    "predicted_distribution": {
+      "NEGATIVE": 24,
+      "NEUTRAL": 18,
+      "POSITIVE": 8
+    },
+    "avg_llm_confidence_on_neutral": 0.763
+  },
+  "llm_vs_nrc_emotion": {
+    "both_emotions": 120,
+    "agree": 21,
+    "disagree": 99,
+    "agreement_rate_overall": 0.14,
+    "agreement_rate_on_evaluated": 0.175
+  },
+  "llm_emotion_distribution": {
+    "anger": 52,
+    "joy": 40,
+    "trust": 28,
+    "sadness": 12,
+    "anticipation": 7,
+    "surprise": 5,
+    "disgust": 5,
+    "fear": 1
+  },
+  "nrc_emotion_distribution": {
+    "anticipation": 71,
+    "joy": 17,
+    "trust": 12,
+    "anger": 10,
+    "fear": 6,
+    "surprise": 2,
+    "sadness": 2
+  }
+}

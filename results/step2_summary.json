@@ -1,0 +1,27 @@
+{
+  "model": "DeepSeek-V4-Flash-0731",
+  "temperature": 0.0,
+  "n_reviews": 100,
+  "n_correct": 98,
+  "n_incorrect": 2,
+  "total_accuracy": 0.98,
+  "positive_accuracy": 0.9892,
+  "negative_accuracy": 0.8571,
+  "positive_total": 93,
+  "negative_total": 7,
+  "actual_counts": {
+    "POSITIVE": 93,
+    "NEGATIVE": 7
+  },
+  "predicted_counts": {
+    "POSITIVE": 93,
+    "NEGATIVE": 7
+  },
+  "confusion_matrix": {
+    "POSITIVE-POSITIVE": 92,
+    "POSITIVE-NEGATIVE": 1,
+    "NEGATIVE-POSITIVE": 1,
+    "NEGATIVE-NEGATIVE": 6
+  },
+  "confusion_layout": "rows=actual, cols=predicted"
+}
