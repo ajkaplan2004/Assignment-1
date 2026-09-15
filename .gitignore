@@ -1,0 +1,27 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- Secrets / config (creds live here) ---
+*.key
+*.pem
+config.yaml
+local_config.yaml
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Data: raw dataset + generated outputs are NOT committed ---
+data/
+results/
+
+# --- Screenshots / temp visuals ---
+dashboard_screenshot*.png
+shot*.png

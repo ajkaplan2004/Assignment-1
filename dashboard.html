@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MBAX 6418 · Sentiment Classification Dashboard</title>
+<style>
+  :root{
+    --bg:#f4f5fa; --card:#ffffff; --text:#1a1d29; --muted:#697386;
+    --line:#e6e8f0; --accent:#4f46e5; --accent-soft:#eef0ff;
+    --pos:#0e9f6e; --pos-soft:#e5f7f0;
+    --neg:#e11d48; --neg-soft:#fee9ee;
+    --warn:#d97706; --ok:#16a34a; --bad:#dc2626;
+    --r:16px; --shadow:0 1px 2px rgba(20,24,45,.05), 0 8px 24px -12px rgba(20,24,45,.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+    -webkit-font-smoothing:antialiased; padding:32px 20px 64px;
+  }
+  .wrap{max-width:1180px; margin:0 auto}
+  .head{display:flex; align-items:flex-end; justify-content:space-between;
+        flex-wrap:wrap; gap:12px; margin-bottom:26px}
+  .eyebrow{font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+           color:var(--accent); font-weight:700; margin-bottom:6px}
+  h1{font-size:26px; font-weight:750; letter-spacing:-.02em}
+  .sub{color:var(--muted); font-size:14px; margin-top:6px}
+  .badge{background:var(--accent-soft); color:var(--accent); font-weight:700;
+         border-radius:999px; padding:6px 14px; font-size:13px}
+
+  /* ---- Metric cards ---- */
+  .grid{display:grid; gap:16px}
+  .kpis{grid-template-columns:repeat(6,1fr); margin-bottom:16px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+        box-shadow:var(--shadow); padding:18px 20px}
+  .kpi .label{font-size:12px; color:var(--muted); font-weight:600;
+              text-transform:uppercase; letter-spacing:.05em}
+  .kpi .num{font-size:30px; font-weight:800; letter-spacing:-.02em; margin-top:6px}
+  .kpi .foot{font-size:12px; color:var(--muted); margin-top:4px}
+  .kpi.accent .num{color:var(--accent)}
+  .kpi.pos .num{color:var(--pos)} .kpi.neg .num{color:var(--neg)}
+  .kpi.ok .num{color:var(--ok)} .kpi.bad .num{color:var(--bad)}
+
+  .row2{grid-template-columns:1.05fr 1.05fr 1.4fr; margin-bottom:16px}
+  .panel h3{font-size:15px; font-weight:700; margin-bottom:16px;
+            display:flex; align-items:center; gap:8px; letter-spacing:-.01em}
+  .panel h3 .dot{width:9px;height:9px;border-radius:2px}
+
+  /* ---- Confusion matrix ---- */
+  .cm{display:grid; grid-template-columns:auto 1fr 1fr; gap:8px; align-items:stretch}
+  .cm .corner{color:var(--muted); font-size:12px; font-weight:700;
+              display:flex; align-items:flex-end; justify-content:flex-end;
+              padding:0 4px 6px 0}
+  .cm .clab{font-size:12px; font-weight:700; color:var(--muted);
+            display:flex; align-items:center; padding-right:8px}
+  .cm .cell{border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+            text-align:left; min-width:90px}
+  .cm .cell b{font-size:22px; font-weight:800; display:block; letter-spacing:-.02em}
+  .cm .cell span{font-size:11px; color:var(--muted); font-weight:600}
+  .cm .pp{background:var(--pos-soft); border-color:#bfe6d5}
+  .cm .nn{background:var(--neg-soft); border-color:#f6c6d1}
+  .cm .pn{background:#fef3e8; border-color:#f7dcb8}
+  .cm .np{background:#fef3e8; border-color:#f7dcb8}
+  .cm .cm-act{font-size:11px; color:var(--muted); font-weight:600;
+              grid-column:2/4; text-align:center; padding-top:2px}
+
+  /* ---- Distribution bars ---- */
+  .bars{display:flex; flex-direction:column; gap:16px}
+  .bar-group .bhead{display:flex; justify-content:space-between; font-size:12px;
+                     color:var(--muted); font-weight:600; margin-bottom:6px}
+  .bar-wrapper{position:relative; height:30px; background:#f1f2f8;
+               border-radius:8px; overflow:hidden}
+  .bar-inner{height:100%; border-radius:8px; display:flex; align-items:center;
+             padding-left:10px; color:#fff; font-weight:700; font-size:12px;
+             transition:width .6s cubic-bezier(.2,.8,.2,1); white-space:nowrap}
+  .legend{display:flex; gap:18px; font-size:12px; color:var(--muted); margin-top:12px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+  /* ---- Class accuracy ---- */
+  .acc{display:flex; flex-direction:column; gap:16px}
+  .acc-row .ar-head{display:flex; justify-content:space-between; font-size:13px;
+                     font-weight:600; margin-bottom:6px}
+  .acc-row .ar-head small{color:var(--muted); font-weight:500}
+  .track{height:10px; background:#eef0f7; border-radius:99px; overflow:hidden}
+  .fill{height:100%; border-radius:99px}
+
+  /* ---- Table ---- */
+  .table-card{padding:0; overflow:hidden}
+  .table-toolbar{display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+                 justify-content:space-between; padding:18px 22px;
+                 border-bottom:1px solid var(--line)}
+  .filters{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .seg{display:inline-flex; background:#eef0f7; border-radius:10px; padding:3px; gap:2px}
+  .seg button{border:0; background:transparent; padding:7px 14px; border-radius:8px;
+              font-size:13px; font-weight:600; color:var(--muted); cursor:pointer;
+              transition:all .15s}
+  .seg button.active{background:#fff; color:var(--text); box-shadow:var(--shadow)}
+  select{font-family:inherit; font-size:13px; padding:8px 10px; border:1px solid var(--line);
+         border-radius:9px; background:#fff; color:var(--text); cursor:pointer; font-weight:600}
+  .search{flex:1; min-width:200px}
+  .search input{width:100%; font-family:inherit; font-size:13px; padding:9px 12px;
+                border:1px solid var(--line); border-radius:9px; background:#fff;
+                color:var(--text); outline:none}
+  .search input:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  .count-line{padding:12px 22px; font-size:13px; color:var(--muted);
+              border-bottom:1px solid var(--line); background:#fafbfe;
+              display:flex; justify-content:space-between; align-items:center}
+  .count-line b{color:var(--text)}
+  .scroll{overflow:auto; max-height:560px}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  thead th{position:sticky; top:0; background:#fafbfe; text-align:left; z-index:2;
+           color:var(--muted); font-size:11px; text-transform:uppercase;
+           letter-spacing:.06em; padding:10px 22px; border-bottom:1px solid var(--line);
+           cursor:pointer; user-select:none; white-space:nowrap}
+  thead th:hover{color:var(--accent)}
+  tbody td{padding:12px 22px; border-bottom:1px solid #f0f1f7; vertical-align:top}
+  tbody tr:hover{background:#fafbff}
+  td.rt{width:74px; font-weight:700; color:#333a4d}
+  .stars{color:var(--warn); letter-spacing:1px}
+  td.big{max-width:400px}
+  .title{font-weight:700; color:#23293c}
+  .txt{color:var(--muted); margin-top:3px; display:block}
+  .pill{display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px;
+        font-weight:700; letter-spacing:.02em}
+  .pill.pos{background:var(--pos-soft); color:var(--pos)}
+  .pill.neg{background:var(--neg-soft); color:var(--neg)}
+  .pill.ok{background:#e7f6ec; color:var(--ok)}
+  .pill.bad{background:#fdecef; color:var(--bad)}
+  .state{font-weight:700}
+  .state.ok{color:var(--ok)} .state.bad{color:var(--bad)}
+  .empty{padding:40px; text-align:center; color:var(--muted)}
+  th .arrow{opacity:.5; font-size:10px; margin-left:2px}
+  footer{margin-top:22px; color:var(--muted); font-size:12px; text-align:center}
+  @media (max-width:1024px){ .kpis{grid-template-columns:repeat(3,1fr)}
+                             .row2{grid-template-columns:1fr} }
+  @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div>
+      <div class="eyebrow">MBAX 6418 · Assignment 1</div>
+      <h1>Review Sentiment — Classification Dashboard</h1>
+      <div class="sub" id="sub">First 100 Amazon Gift Card reviews · LLM: DeepSeek-V4-Flash-0731 (temperature 0.0) · rating never sent to model</div>
+    </div>
+    <div class="badge">Binary · POS / NEG</div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="grid kpis" id="kpis"></div>
+
+  <div class="grid row2">
+    <!-- Confusion matrix -->
+    <div class="card panel">
+      <h3><span class="dot" style="background:var(--accent)"></span>Confusion matrix</h3>
+      <div class="cm" id="cm"></div>
+    </div>
+    <!-- Distribution -->
+    <div class="card panel">
+      <h3><span class="dot" style="background:#0ea5e9"></span>Actual vs predicted</h3>
+      <div class="bars" id="bars"></div>
+      <div class="legend">
+        <span><i style="background:#9aa3b8"></i>Actual</span>
+        <span><i style="background:var(--accent)"></i>Predicted</span>
+      </div>
+    </div>
+    <!-- Class accuracy -->
+    <div class="card panel">
+      <h3><span class="dot" style="background:#0e9f6e"></span>Class-level accuracy</h3>
+      <div class="acc" id="acc"></div>
+    </div>
+  </div>
+
+  <!-- Review table -->
+  <div class="card table-card">
+    <div class="table-toolbar">
+      <div class="filters">
+        <div class="seg" id="statusSeg">
+          <button data-v="all" class="active">All</button>
+          <button data-v="correct">Correct</button>
+          <button data-v="mismatch">Mismatched</button>
+        </div>
+        <select id="actualFilt" title="Filter by actual class">
+          <option value="all">Any actual class</option>
+          <option value="POSITIVE">Actual: POSITIVE</option>
+          <option value="NEGATIVE">Actual: NEGATIVE</option>
+        </select>
+        <select id="predFilt" title="Filter by predicted class">
+          <option value="all">Any predicted class</option>
+          <option value="POSITIVE">Predicted: POSITIVE</option>
+          <option value="NEGATIVE">Predicted: NEGATIVE</option>
+        </select>
+      </div>
+      <div class="search">
+        <input id="search" type="text" placeholder="Search title or review text…">
+      </div>
+    </div>
+
+    <div class="count-line">
+      <span>Showing <b id="visibleCount">0</b> of <b id="totalCount">0</b> reviews</span>
+      <span id="filterDesc" style="color:#9aa3b8"></span>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-k="r">Rating</th>
+            <th data-k="t">Title / Review</th>
+            <th data-k="a">Actual</th>
+            <th data-k="p">Predicted</th>
+            <th data-k="s">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Built automatically from <code>results/step2_predictions.csv</code> · filters update the visible count live · data embedded, works offline</footer>
+</div>
+
+<script id="data" type="application/json">[{"i": 0, "r": 5.0, "t": "Great gift", "x": "Having Amazon money is always good.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 1, "r": 5.0, "t": "amazon gift card", "x": "Always the perfect gift.  I have never given one and had someone seem or act disappointed.  Just the opposite.  They are thrilled and excited to have a bit of a spree.  Always the perfect size and color!  Arrives in 1 day in most cases.  So it's never too late!  Lots of cards to chose from... thank you... birthday... wedding..baby..  and many that work for many occasions...", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 2, "r": 5.0, "t": "perfect gift", "x": "When you have a person who is hard to shop for.. an amazon gift card is P E R F E C T.  Man or woman...  No matter what their hobby... lifestyle.. or age.  All you have to do is pick the $.  Don't forget to mention that it is a GIFT when you check out - you will have some gift card options.  I've ordered many of these over years.  They are always received with glee.  Woo hoo!  If you're looking for a great fit for me - this is just my size!  :)  Best to all!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 3, "r": 5.0, "t": "Nice looking", "x": "The tin is a nice touch and pretty large.  It's about 4&#34; in diameter and about 1/2&#34; thick.  I added a pretty red ribbon and it is perfect.  Who doesn't love shopping on Amazon? Arrived quickly, I have Prime... but I think they ship the gift cards out SUPER fast... like over night. In case you need it for a FAST gift.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 4, "r": 1.0, "t": "Not $10 Gift Cards", "x": "I bought this pack of Starbucks Gift cards in 2019. Ive given them to friends and I gave 2 to my daughter.<br />My daughter used one recently and it had $6.52 on the card not $10.00. She had the cashier check the balance of the other card and it had $5.32 on it! She had forgotten that she had these gift cards, so yes, 2 years later decided to use the when she found them! Do they decline in value? And then both had random amounts on them! I'm embarrassed now to have given them as gifts! Friends receiving the gift card aren't going to tell you that weren't able to cover their order with the card you gave them!!!", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 5, "r": 5.0, "t": "Cute!", "x": "That snowman tin is adorable", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 6, "r": 5.0, "t": "Easy gift", "x": "Great and easy gift", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 7, "r": 5.0, "t": "Great gift", "x": "Super cute nice quality tin<br />Your choose amount", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 8, "r": 5.0, "t": "Gifts for my two granddaughters", "x": "They love it !!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 9, "r": 5.0, "t": "Great for saying “thank you” to the mail person, farrier, yard man,etc", "x": "So many people<br />Make your life better so remember them!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 10, "r": 5.0, "t": "Convenient, safe, and perfect gift", "x": "My grandson inlaw loves his gift cards, so it's the perfect gift for Christmas", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 11, "r": 5.0, "t": "Giftcard", "x": "What can you say about a gift card? Well, it was valid. It's a good gift for someone who doesn't like to cook. Arrived promptly.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 12, "r": 5.0, "t": "Simple giftcard!", "x": "Easy way to gift money for birthdays.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 13, "r": 5.0, "t": "Great giftcard", "x": "Great gift for online shoppers!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 14, "r": 5.0, "t": "Easy..", "x": "Reloading is easy. Shopping is easy. Amazon is easy.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 15, "r": 1.0, "t": "One Star", "x": "Card did not work!!!!", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 16, "r": 5.0, "t": "Great Product.", "x": "I bought this for a Christmas gift.The recipient really liked it.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 17, "r": 5.0, "t": "No note attached to sent gift card", "x": "What a pretty gift card presentation , the recipient loved it ! I have one complaint , I took the time and wrote a short note to the recipient of the gift card so she knew who and why the GC was being sent but the note wasn’t attached. I’ve used the option to write a note on many occasions and several times it showed up without the note . I actually had to contact her to ask if she had checked her mail knowing it had arrived .", "a": "POSITIVE", "p": "NEGATIVE", "c": false}, {"i": 18, "r": 5.0, "t": "Gift card", "x": "Perfect! Arrived just when stated!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 19, "r": 5.0, "t": "Good", "x": "Good gift card", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 20, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 21, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 22, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 23, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 24, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 25, "r": 5.0, "t": "Good product", "x": "Good product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 26, "r": 5.0, "t": "Good product", "x": "Good product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 27, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 28, "r": 5.0, "t": "Good Product", "x": "Good Product", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 29, "r": 5.0, "t": "Good", "x": "Good", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 30, "r": 5.0, "t": "Gift card", "x": "Perfect for Christmas", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 31, "r": 5.0, "t": "So easy", "x": "Easy to do", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 32, "r": 2.0, "t": "Mistake", "x": "Hit button by mistake n deduction from credit card on file", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 33, "r": 5.0, "t": "Great gift idea", "x": "Always great to order from my home. Amazon rocks!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 34, "r": 5.0, "t": "Secure", "x": "So easy to use and recipients get to choose how to use it.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 35, "r": 5.0, "t": "Birthday surprise!", "x": "This was a good birthday surprise!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 36, "r": 5.0, "t": "Birthday Gift", "x": "Have given as Holiday, Birthday & Other Occasions remembrances. Always appreciated by the person receiving.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 37, "r": 5.0, "t": "Fun", "x": "Awesome & they work", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 38, "r": 5.0, "t": "Reload is super easy.", "x": "Really ready to reload gift cards.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 39, "r": 5.0, "t": "Convenience of giftabiliy.", "x": "A great way to give a gift to family members in physical form. It was so convenient.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 40, "r": 5.0, "t": "Great Gift Package", "x": "Nice gift packaging for any event", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 41, "r": 5.0, "t": "Grest Sandwitches !!", "x": "Perfect and I even used Amazon Points - was mailed right out.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 42, "r": 5.0, "t": "GOOD PIZZA !!", "x": "Perfect and I even used Amazon Points - was mailed right out.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 43, "r": 5.0, "t": "We like this Store and they stock Tons of different Items for all kinds of Pets", "x": "Our cats love this place.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 44, "r": 5.0, "t": "Money was loaded on card", "x": "Was cute and the money was loaded when it arrived", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 45, "r": 5.0, "t": "👍", "x": "👍", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 46, "r": 5.0, "t": "Love it!!", "x": "This is an online gift card nothing to show sorry🤪", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 47, "r": 5.0, "t": "Five Stars", "x": "Gift cards are always a hit.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 48, "r": 5.0, "t": "So cool you can get a free tin with the gift ...", "x": "So cool you can get a free tin with the gift card and it comes in 24 hours!! Super awesome. Last year I just printed off the gift cards which looked kind of cheap even though the cards were for substantial amounts. Highly recommend.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 49, "r": 5.0, "t": "Reccomend", "x": "Really easy to load", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 50, "r": 5.0, "t": "Little sister surprise", "x": "Same gift as her big sister's, this little one can choose the exact thing she most desires and run to the door for three days in anticipation.  A combined birthday and Christmas present for one who knows her own mind.  Good choice!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 51, "r": 1.0, "t": "The added value was great, but no more", "x": "Purchasing an Amazon gift card came with an added monetary value but no more.<br /><br />A Bronx cheer for you!", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 52, "r": 4.0, "t": "Perfect gift!", "x": "This is near where I work and has a drive through.  Nothing better during these times to give than a gift of good food they can pick up with minimal contact. Gift cards are the way to go these days!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 53, "r": 4.0, "t": "Great staff appreciation gift!", "x": "What better gift during these times than one to treat yourself.  This is a great gift I gave out to my staff and even those who don't read liked the idea of being able to listen to the audiobooks as well as there being content and other media through Audible.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 54, "r": 5.0, "t": "Cute cute cute!", "x": "I love the tin! The gift cards can be ordered on different amounts.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 55, "r": 5.0, "t": "Five Stars", "x": "Simple and easy.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 56, "r": 5.0, "t": "As described.", "x": "Being able to reload the gift card is a time saver.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 57, "r": 5.0, "t": "Perfect gift for any occasion. Let them pick out what they love!", "x": "I mean really, who wouldn't LOVE this?!?  Wonderful gift for any occasion.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 58, "r": 5.0, "t": "12 year old daughter loved this gift!", "x": "Perfect gift for your kids!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 59, "r": 5.0, "t": "Easy to send to an Amazon shopper", "x": "This is a simple gift to friends or family. For me it was easy to setup. Took ok only about 30 seconds. I also redeem Visa gifts by giving the gift card to myself. I like there isnt a fee. I do want Amazon to make some cooler cards with my animation when a receiver gets it.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 60, "r": 5.0, "t": "Rec'd promo from Amazon when reloading gift card.", "x": "Bonus, rec'd a promo from Amazon for reloading gift card.  Yeah.<br /><br />Gift card was posted to my account quickly.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 61, "r": 5.0, "t": "Saves a Little Over time.", "x": "Nice way to save a few bucks overtime by reloading your own gift card.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 62, "r": 5.0, "t": "What a great company", "x": "Who wouldn't want an Amazon gift card?  The box foretold the contents, lol.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 63, "r": 1.0, "t": "A problem to use at drive thru's", "x": "I only used the $50 card one time at Burger King. It was difficult to use. Must be run as credit, not as gift card. No remaining balance is given at the end of the transaction. And although it's on me, I misplaced or lost this card after only spending about $6 of it. I was hoping that the seller could provide me with the full card number so that I could at least use it online for other purchases. They failed to respond. I have the receipt from BK, but it only shows the last 4 numbers. There isn't a way of contacting happy cards customer service online that I could figure out. I wish I'd just stuck with credit cards. A lot safer.", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 64, "r": 5.0, "t": "A gift card does make a great gift for a tweenager.", "x": "We all know the kid who wants nothing. Or actually wants everything but nothing is good enough. YES,YES,the secret weapon. A AMAZON GIFT CARD!!  You pulled it off. You showed your love and you are the best and greatest. Happy Birthday to just because,You are the BEST!!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 65, "r": 5.0, "t": "Nice to have", "x": "This comes in  very handy, and makes the guilt less", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 66, "r": 5.0, "t": "Excellent Gift", "x": "Who would not like an Amazon Gift Card?  Makes everyone I give them, happy!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 67, "r": 5.0, "t": "Yay so easy!", "x": "So easy! No scraping!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 68, "r": 5.0, "t": ":)", "x": "easy to use", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 69, "r": 5.0, "t": "10/10", "x": "works great", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 70, "r": 5.0, "t": "Perfect for a birthday 🎂", "x": "Another nice gift box from Amazon. With the world the way it is now I had to send a gift rather than going to a party. And Amazon has a good selection of gift boxes and fast shipping so my nephew was happy when he received the card in the mail.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 71, "r": 5.0, "t": "Perfect!", "x": "Bought this for a gift and was very happy it shipped quickly and they received it just in time! Amazon is awesome! 🤩", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 72, "r": 5.0, "t": "Gift box nice!", "x": "Love the gift box. So much j NB icee than just handing a gift card to the grandkids.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 73, "r": 5.0, "t": "It was soooo easy", "x": "It was a nice way to give a present", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 74, "r": 5.0, "t": "great", "x": "great buy", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 75, "r": 5.0, "t": "Amazon Thinks of Everything!", "x": "GREAT idea!  I was so happy to have these on hand for the Holidays!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 76, "r": 5.0, "t": "Amazon lover giftee?  Buy it!", "x": "So gift card for certain sum.  No service fee.  Lively metal gift box - yes..... I said metal.  What is not to love about this???!<br /><br />Well done Amazon.  Well done.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 77, "r": 5.0, "t": "Timing", "x": "Great timing.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 78, "r": 5.0, "t": "Was easy to do", "x": "Easy to use", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 79, "r": 5.0, "t": "PENGUINS", "x": "So so cute!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 80, "r": 5.0, "t": "Believe this is the best gift to give !", "x": "The recipient can choose what they want so the giver has less chance of a mistake.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 81, "r": 5.0, "t": "convenient", "x": "A great and convenient gift idea-price is right too!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 82, "r": 5.0, "t": "Five Stars", "x": "The gift card came in a pretty box.<br />Thanks Amozan.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 83, "r": 5.0, "t": "Best gift for someone you don’t know what to get", "x": "This was for a gift", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 84, "r": 5.0, "t": "Great value", "x": "Made my shopping much better good value", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 85, "r": 5.0, "t": "Sweet gift!", "x": "I sent this to my brother and he couldn't stop talking about it. This boxes puts a little more nice into a gift. Very pretty!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 86, "r": 5.0, "t": "Amazing", "x": "It can be used for a variety of things.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 87, "r": 5.0, "t": "Great Holder", "x": "Great holder for gift cards", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 88, "r": 5.0, "t": "Gift card", "x": "Makes these so easy for any holiday and especially stops buying something people do not like", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 89, "r": 5.0, "t": "Starbuck gift card", "x": "My friend like the gift card like the sweater for holiday card", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 90, "r": 5.0, "t": "Good litte thank-you gifts", "x": "I'm happy they did not cost me more than their face value to buy. I gave them out as a nice thank you to those who helped me with small things around my house. I sent them in the mail as a surprise, knowing money or gifts was not necessary. I recommend them.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 91, "r": 3.0, "t": "Okay as a gift", "x": "After I bought several I realized I could have sent \"gift\" money via text without the fees or wait.", "a": "NEGATIVE", "p": "NEGATIVE", "c": true}, {"i": 92, "r": 5.0, "t": "Good gift", "x": "Those who already have everything, they can buy an audible book, an old rerun of a favorite movie, some little thing they may want, or whatever as a gift for any occasion. I recommend.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 93, "r": 5.0, "t": "So convenient.", "x": "Arrived on time, in perfect shape, and best of all the person receiving the gift can buy whatever they want. One size fits all!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 94, "r": 5.0, "t": "Just what was ordered.", "x": "Made holiday shopping easy!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 95, "r": 5.0, "t": "Can Do It From Home", "x": "Usually I either receive an Amazon gift card as a birthday and/or Christmas gift or I purchase them at a store. Then it's very easy to add the amount to my gift card balance using my cell phone. Well I was stuck inside for several days due to a blizzard and I bought quite a few books then due to a travel ban I could not go to the store to purchase a gift card.<br />So after checking my Gift Card Balance I saw that I had overindulged and it needed to be topped up. One of the options under Manage Your Balance was to Reload Your Balance. I had never used this option but decided to try it. It was so easy to do and I didn't have to leave the comfort of my home. I will be using it again in the future.", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 96, "r": 5.0, "t": "Love it!", "x": "Love my card!!", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 97, "r": 5.0, "t": "Easy to use", "x": "It’s easy to use and very convenient. I would definitely consider refill more in the future", "a": "POSITIVE", "p": "POSITIVE", "c": true}, {"i": 98, "r": 3.0, "t": "Easy to use", "x": "Very easy to use. I wish I knew about it earlier", "a": "NEGATIVE", "p": "POSITIVE", "c": false}, {"i": 99, "r": 5.0, "t": "Perfect gift sent I a lovely container", "x": "Sent in a lovely container", "a": "POSITIVE", "p": "POSITIVE", "c": true}]</script>
+<script>
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const POS="POSITIVE", NEG="NEGATIVE";
+
+/* ---------- helpers ---------- */
+const stars = n => { const c=Math.round(n); return "★".repeat(c)+"☆".repeat(5-c); };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = (num,den) => den? (100*num/den).toFixed(1)+"%" : "—";
+function fill(color,w,label){ w=Math.max(Number(w)||0,3); const show=(label&&w>=40)?label:"";
+  return `<div class="bar-wrapper"><div class="bar-inner" style="width:${w}%;background:${color}">${show}</div></div>`; }
+
+/* ---------- stats ---------- */
+const S = (()=>{
+  const total=DATA.length;
+  const n_correct=DATA.filter(d=>d.c).length, n_incorrect=total-n_correct;
+  const actual={POSITIVE:0,NEGATIVE:0}, pred={POSITIVE:0,NEGATIVE:0}, cm={PP:0,PN:0,NP:0,NN:0};
+  for(const d of DATA){
+    actual[d.a]++; pred[d.p]++;
+    if(d.a===POS) d.p===POS?cm.PP++:cm.PN++; else d.p===POS?cm.NP++:cm.NN++;
+  }
+  const cls=(c)=> actual[c]? (cm[c==POS?"PP":"NN"]/actual[c]) : 0;
+  return {total,n_correct,n_incorrect,acc:n_correct/total,actual,pred,cm,
+          posAcc:cls(POS),negAcc:cls(NEG),max:Math.max(actual.POSITIVE,actual.NEGATIVE,pred.POSITIVE,pred.NEGATIVE)};
+})();
+
+/* ---------- render KPIs ---------- */
+const kpis=[
+ {c:"accent",l:"Total reviews",n:S.total,f:"first 100 of dataset"},
+ {c:"ok",l:"Correct",n:S.n_correct,f:pct(S.n_correct,S.total)+" overall accuracy"},
+ {c:"bad",l:"Incorrect",n:S.n_incorrect,f:"mismatches"},
+ {c:"pos",l:"Actual POSITIVE",n:S.actual.POSITIVE,f:"rating ≥ 4"},
+ {c:"neg",l:"Actual NEGATIVE",n:S.actual.NEGATIVE,f:"rating < 4"},
+ {c:"accent",l:"Overall accuracy",n:pct(S.n_correct,S.total),f:S.n_correct+"/"+S.total},
+];
+document.getElementById("kpis").innerHTML = kpis.map(k=>
+  `<div class="card kpi ${k.c}"><div class="label">${k.l}</div><div class="num">${k.n}</div><div class="foot">${k.f}</div></div>`).join("");
+
+/* ---------- confusion matrix ---------- */
+const cmSpec={PP:["POSITIVE → POSITIVE","var(--pos)"],PN:["POSITIVE → NEGATIVE","var(--warn)"],
+              NP:["NEGATIVE → POSITIVE","var(--warn)"],NN:["NEGATIVE → NEGATIVE","var(--neg)"]};
+let cmHTML=`<div class="corner">predicted →</div><div class="cm-head" style="text-align:center;font-size:12px;font-weight:700;color:var(--muted)">POSITIVE</div><div style="text-align:center;font-size:12px;font-weight:700;color:var(--muted)">NEGATIVE</div>
+<div class="clab">actual↓<br>POSITIVE</div><div class="cell pp"><b>${S.cm.PP}</b><span>${cmSpec.PP[0]}</span></div><div class="cell pn"><b>${S.cm.PN}</b><span>${cmSpec.PN[0]}</span></div>
+<div class="clab">NEGATIVE</div><div class="cell np"><b>${S.cm.NP}</b><span>${cmSpec.NP[0]}</span></div><div class="cell nn"><b>${S.cm.NN}</b><span>${cmSpec.NN[0]}</span></div>`;
+document.getElementById("cm").innerHTML=cmHTML;
+
+/* ---------- distribution bars ---------- */
+document.getElementById("bars").innerHTML =
+ `<div class="bar-group"><div class="bhead"><span>POSITIVE</span><span>${S.actual.POSITIVE} actual · ${S.pred.POSITIVE} predicted</span></div>
+   ${fill("#9aa3b8", 100*S.actual.POSITIVE/S.max, "Actual "+S.actual.POSITIVE)}
+   <div style="height:8px"></div>
+   ${fill("var(--accent)", 100*S.pred.POSITIVE/S.max, "Predicted "+S.pred.POSITIVE)}</div>
+  <div class="bar-group"><div class="bhead"><span>NEGATIVE</span><span>${S.actual.NEGATIVE} actual · ${S.pred.NEGATIVE} predicted</span></div>
+   ${fill("#9aa3b8", 100*S.actual.NEGATIVE/S.max, "Actual "+S.actual.NEGATIVE)}
+   <div style="height:8px"></div>
+   ${fill("var(--accent)", 100*S.pred.NEGATIVE/S.max, "Predicted "+S.pred.NEGATIVE)}</div>`;
+
+/* ---------- class accuracy ---------- */
+const accRow=(label,val,tot,color)=>`
+ <div class="acc-row"><div class="ar-head"><span>${label} <small>· ${tot} reviews</small></span><span>${(100*val).toFixed(1)}%</span></div>
+ <div class="track"><div class="fill" style="width:${100*val}%;background:${color}"></div></div></div>`;
+document.getElementById("acc").innerHTML=
+  accRow("POSITIVE",S.posAcc,S.actual.POSITIVE,"var(--pos)")+
+  accRow("NEGATIVE",S.negAcc,S.actual.NEGATIVE,"var(--neg)")+
+  accRow("Overall",S.acc,S.total,"var(--accent)");
+
+/* ---------- table + filters ---------- */
+let state={status:"all",actual:"all",pred:"all",q:"",sort:"r",dir:-1};
+const statusEls=document.querySelectorAll(".seg button");
+
+function visible(){
+  const q=state.q.toLowerCase();
+  return DATA.filter(d=>{
+    if(state.status==="correct"&&!d.c) return false;
+    if(state.status==="mismatch"&&d.c) return false;
+    if(state.actual!=="all"&&d.a!==state.actual) return false;
+    if(state.pred!=="all"&&d.p!==state.pred) return false;
+    if(q && !(d.t.toLowerCase().includes(q)||d.x.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function render(){
+  let list=visible();
+  const dir=state.dir, k=state.sort;
+  list.sort((a,b)=>{ const av=k==="r"?a.r:(a[k]||""), bv=k==="r"?b.r:(b[k]||""); 
+    let c; if(typeof av==="number"&&typeof bv==="number") c=av-bv; else c=String(av).localeCompare(String(bv)); return c*dir; });
+  document.getElementById("tbody").innerHTML=list.length? list.map(d=>`
+   <tr>
+    <td class="rt">${d.r.toFixed(1)}<div class="stars">${stars(d.r)}</div></td>
+    <td class="big"><div class="title">${esc(d.t)}</div><span class="txt">${esc(d.x)}</span></td>
+    <td><span class="pill ${d.a===POS?'pos':'neg'}">${d.a}</span></td>
+    <td><span class="pill ${d.p===POS?'pos':'neg'}">${d.p}</span></td>
+    <td><span class="state ${d.c?'ok':'bad'}">${d.c?'✓ Correct':'✗ Mismatch'}</span></td>
+   </tr>`).join("") : `<tr><td colspan="5"><div class="empty">No reviews match the current filters.</div></td></tr>`;
+  document.getElementById("visibleCount").textContent=list.length;
+  document.getElementById("totalCount").textContent=S.total;
+  const parts=[]; if(state.status!=="all")parts.push(state.status);
+  if(state.actual!=="all")parts.push("actual="+state.actual);
+  if(state.pred!=="all")parts.push("predicted="+state.pred);
+  document.getElementById("filterDesc").textContent=parts.length? "filtered: "+parts.join(", "):"";
+}
+/* events */
+document.getElementById("statusSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  statusEls.forEach(x=>x.classList.remove("active")); b.classList.add("active"); state.status=b.dataset.v; render();
+});
+["actualFilt","predFilt"].forEach(id=>document.getElementById(id).addEventListener("change",e=>{
+  state[id==="actualFilt"?"actual":"pred"]=e.target.value; render(); }));
+document.getElementById("search").addEventListener("input",e=>{state.q=e.target.value;render();});
+document.querySelectorAll("thead th").forEach(th=>th.addEventListener("click",()=>{
+  const k=th.dataset.k; if(state.sort===k) state.dir*=-1; else {state.sort=k;state.dir= k==="r"?-1:1;} render(); }));
+
+render();
+</script>
+</body>
+</html>
